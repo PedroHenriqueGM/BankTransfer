@@ -65,6 +65,10 @@ public class TransferenciaEntity {
         this.pontuacaoRisco = resultado.pontuacao();
     }
 
+    public void recusar() {
+        this.status = StatusTransferencia.RECUSADA;
+    }
+
     public Long getId() {
         return id;
     }

@@ -3,6 +3,7 @@ package com.pedro.banktransfer.service;
 import com.pedro.banktransfer.dto.TransferenciaResponseDTO;
 import com.pedro.banktransfer.entity.ContaEntity;
 import com.pedro.banktransfer.entity.TransferenciaEntity;
+import com.pedro.banktransfer.enums.NivelRisco;
 import com.pedro.banktransfer.exception.ChaveIdempotenciaConflitanteException;
 import com.pedro.banktransfer.exception.ContaNaoEncontradaException;
 import com.pedro.banktransfer.exception.TransferenciaNaoEncontradaException;
@@ -96,14 +97,32 @@ public class TransferenciaService {
         ContaEntity destino = Objects.equals(destinoId, primeiroId)
                 ? primeiraConta
                 : segundaConta;
-        origem.debitar(valor);
-        destino.creditar(valor);
-        TransferenciaEntity transferencia = new TransferenciaEntity(origem, destino, valor, idempotencyKey);
+
+        TransferenciaEntity transferencia =
+                new TransferenciaEntity(origem, destino, valor, idempotencyKey);
+
+// Avaliação preventiva, antes de movimentar os saldos
+        ResultadoAnaliseRisco resultado =
+                antiFraudeService.avaliarRisco(origemId, valor);
+
+        transferencia.registrarRisco(resultado);
+
+// Decide se a transferência pode ser executada
+        if (resultado.nivel() == NivelRisco.ALTO) {
+            transferencia.recusar();
+        } else {
+            origem.debitar(valor);
+            destino.creditar(valor);
+        }
+
+// Registra tanto transferências concluídas quanto recusadas
         TransferenciaEntity salva =
                 transferenciaRepository.saveAndFlush(transferencia);
 
-        antiFraudeService.analisarTransferencia(salva);
+        antiFraudeService.registrarAlertas(salva, resultado);
+
         return new ResultadoTransferencia(salva, true);
+
     }
 
     public TransferenciaEntity buscarPorId(Long id) {
