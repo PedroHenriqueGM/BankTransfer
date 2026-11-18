@@ -1,6 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { buscarConta, criarConta, type Conta } from './services/contaService'
 import './App.css'
+import {
+  criarTransferencia,
+  type Transferencia,
+} from './services/transferenciaService'
 
 type Pagina = 'contas' | 'transferencias' | 'historico' | 'antifraude'
 
@@ -14,6 +18,19 @@ function App() {
   const [contaConsultada, setContaConsultada] = useState<Conta | null>(null)
   const [erroConsulta, setErroConsulta] = useState('')
   const [consultando, setConsultando] = useState(false)
+  const [origemId, setOrigemId] = useState('')
+  const [destinoId, setDestinoId] = useState('')
+  const [valor, setValor] = useState('')
+  const [resultadoTransferencia, setResultadoTransferencia] =
+      useState<Transferencia | null>(null)
+  const [erroTransferencia, setErroTransferencia] = useState('')
+  const [transferindo, setTransferindo] = useState(false)
+  const tentativaPendente = useRef<{
+    chave: string
+    origem: number
+    destino: number
+    valor: number
+  } | null>(null)
 
   async function cadastrarConta(evento: React.SubmitEvent<HTMLFormElement>) {
     evento.preventDefault()
@@ -67,6 +84,87 @@ function App() {
     }
   }
 
+  async function realizarTransferencia(
+      evento: React.SubmitEvent<HTMLFormElement>
+  ) {
+    evento.preventDefault()
+
+    const origem = Number(origemId)
+    const destino = Number(destinoId)
+    const valorNumerico = Number(valor)
+
+    if (
+        !Number.isSafeInteger(origem) ||
+        !Number.isSafeInteger(destino) ||
+        origem <= 0 ||
+        destino <= 0 ||
+        origem === destino
+    ) {
+      setErroTransferencia('Informe contas válidas e diferentes.')
+      return
+    }
+
+    if (!Number.isFinite(valorNumerico) || valorNumerico <= 0) {
+      setErroTransferencia('Informe um valor maior que zero.')
+      return
+    }
+
+    setTransferindo(true)
+    setErroTransferencia('')
+    setResultadoTransferencia(null)
+
+
+    try {
+      const tentativa = tentativaPendente.current
+
+      // Reutiliza a chave se os dados forem idênticos
+      const mesmaOperacao =
+          tentativa !== null &&
+          tentativa.origem === origem &&
+          tentativa.destino === destino &&
+          tentativa.valor === valorNumerico
+
+      const chave = mesmaOperacao
+          ? tentativa.chave
+          : crypto.randomUUID()
+
+      tentativaPendente.current = {
+        chave,
+        origem,
+        destino,
+        valor: valorNumerico,
+      }
+
+      const transferencia = await criarTransferencia(
+          origem,
+          destino,
+          valorNumerico,
+          chave
+      )
+
+      setResultadoTransferencia(transferencia)
+
+      // Recebemos uma resposta definitiva: a operação terminou
+      tentativaPendente.current = null
+
+    } catch (erro) {
+      if (erro instanceof TypeError) {
+        setErroTransferencia(
+            'Não foi possível confirmar o resultado da transferência. ' +
+            'Ela pode ter sido concluída. Evite realizar uma nova operação ' +
+            'antes de verificar o histórico ou os saldos.'
+        )
+      } else {
+        setErroTransferencia(
+            erro instanceof Error
+                ? erro.message
+                : 'Não foi possível processar a transferência.'
+        )
+      }
+    } finally {
+      setTransferindo(false)
+    }
+  }
 
 
   return (
@@ -177,12 +275,87 @@ function App() {
           )}
 
 
+
           {pagina === 'transferencias' && (
               <section>
                 <h2>Transferências</h2>
-                <p>Realize transferências entre contas.</p>
+                <p>Envie valores entre contas bancárias.</p>
+
+                <form className="formulario" onSubmit={realizarTransferencia}>
+                  <label htmlFor="origemId">ID da conta de origem</label>
+                  <input
+                      id="origemId"
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={origemId}
+                      onChange={(e) => setOrigemId(e.target.value)}
+                      required
+                  />
+
+                  <label htmlFor="destinoId">ID da conta de destino</label>
+                  <input
+                      id="destinoId"
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={destinoId}
+                      onChange={(e) => setDestinoId(e.target.value)}
+                      required
+                  />
+
+                  <label htmlFor="valor">Valor (R$)</label>
+                  <input
+                      id="valor"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={valor}
+                      onChange={(e) => setValor(e.target.value)}
+                      placeholder="0,00"
+                      required
+                  />
+
+                  <button type="submit" disabled={transferindo}>
+                    {transferindo ? 'Processando...' : 'Realizar transferência'}
+                  </button>
+                </form>
+
+                {erroTransferencia && (
+                    <p className="mensagem-erro">{erroTransferencia}</p>
+                )}
+
+                {resultadoTransferencia && (
+                    <div className="resultado-conta">
+                      <h3>Resultado da transferência</h3>
+                      <p><strong>ID:</strong> {resultadoTransferencia.id}</p>
+                      <p><strong>Status:</strong> {resultadoTransferencia.status}</p>
+                      <p>
+                        <strong>Valor:</strong>{' '}
+                        {resultadoTransferencia.valor.toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        })}
+                      </p>
+                      <p>
+                        <strong>Pontuação de risco:</strong>{' '}
+                        {resultadoTransferencia.pontuacaoRisco ?? 'Não avaliado'}
+                      </p>
+                      <p>
+                        <strong>Nível de risco:</strong>{' '}
+                        {resultadoTransferencia.nivelRisco ?? 'Não avaliado'}
+                      </p>
+
+                      {resultadoTransferencia.status === 'RECUSADA' && (
+                          <p className="mensagem-erro">
+                            Transferência bloqueada preventivamente por risco elevado.
+                          </p>
+                      )}
+                    </div>
+                )}
               </section>
           )}
+
 
           {pagina === 'historico' && (
               <section>
