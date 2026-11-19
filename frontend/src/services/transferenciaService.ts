@@ -31,3 +31,21 @@ export async function criarTransferencia(
 
     return resposta.json()
 }
+
+export async function buscarHistorico(
+    contaId: number
+): Promise<Transferencia[]> {
+    const resposta = await fetch(
+        `/api/contas/${contaId}/transferencias`
+    )
+
+    if (!resposta.ok) {
+        if (resposta.status === 404) {
+            throw new Error('Conta não encontrada.')
+        }
+
+        throw new Error('Não foi possível consultar o histórico.')
+    }
+
+    return resposta.json()
+}

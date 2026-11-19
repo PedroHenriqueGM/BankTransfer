@@ -131,3 +131,51 @@
   font-size: 20px;
   margin-bottom: 12px;
 }
+
+
+.tabela-container {
+  margin-top: 30px;
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.tabela-historico {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  font-size: 14px;
+}
+
+.tabela-historico th,
+.tabela-historico td {
+  padding: 14px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.tabela-historico th {
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+}
+
+.tabela-historico tbody tr:hover {
+  background: #f8fafc;
+}
+
+.status-concluida {
+  color: #166534;
+  font-weight: 600;
+}
+
+.status-recusada {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.mensagem-vazia {
+  margin-top: 24px;
+  color: #64748b;
+}

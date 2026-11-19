@@ -3,6 +3,7 @@ import { buscarConta, criarConta, type Conta } from './services/contaService'
 import './App.css'
 import {
   criarTransferencia,
+  buscarHistorico,
   type Transferencia,
 } from './services/transferenciaService'
 
@@ -31,6 +32,12 @@ function App() {
     destino: number
     valor: number
   } | null>(null)
+  const [idHistorico, setIdHistorico] = useState('')
+  const [historico, setHistorico] = useState<Transferencia[]>([])
+  const [erroHistorico, setErroHistorico] = useState('')
+  const [consultandoHistorico, setConsultandoHistorico] = useState(false)
+  const [historicoCarregado, setHistoricoCarregado] = useState(false)
+  const [contaHistorico, setContaHistorico] = useState<number | null>(null)
 
   async function cadastrarConta(evento: React.SubmitEvent<HTMLFormElement>) {
     evento.preventDefault()
@@ -167,6 +174,52 @@ function App() {
   }
 
 
+  async function consultarHistorico(
+      evento: React.SubmitEvent<HTMLFormElement>
+  ) {
+    evento.preventDefault()
+
+    const contaId = Number(idHistorico)
+
+    if (!Number.isSafeInteger(contaId) || contaId <= 0) {
+      setErroHistorico('Informe um ID de conta válido.')
+      setHistorico([])
+      setHistoricoCarregado(false)
+      return
+    }
+
+    setConsultandoHistorico(true)
+    setErroHistorico('')
+    setHistorico([])
+    setHistoricoCarregado(false)
+    setContaHistorico(null)
+
+    try {
+      const transferencias = await buscarHistorico(contaId)
+
+      setHistorico(
+          [...transferencias].sort(
+              (a, b) =>
+                  new Date(b.criadaEm).getTime() -
+                  new Date(a.criadaEm).getTime() ||
+                  b.id - a.id
+          )
+      )
+
+      setContaHistorico(contaId)
+      setHistoricoCarregado(true)
+    } catch (erro) {
+      setErroHistorico(
+          erro instanceof Error
+              ? erro.message
+              : 'Erro ao consultar o histórico.'
+      )
+    } finally {
+      setConsultandoHistorico(false)
+    }
+  }
+
+
   return (
       <div className="app">
         <aside className="sidebar">
@@ -274,8 +327,6 @@ function App() {
               </section>
           )}
 
-
-
           {pagina === 'transferencias' && (
               <section>
                 <h2>Transferências</h2>
@@ -357,19 +408,130 @@ function App() {
           )}
 
 
+
           {pagina === 'historico' && (
               <section>
-                <h2>Histórico</h2>
-                <p>Consulte as transferências realizadas.</p>
+                <h2>Histórico de transferências</h2>
+                <p>Consulte as operações enviadas e recebidas por uma conta.</p>
+
+                <form className="formulario" onSubmit={consultarHistorico}>
+                  <label htmlFor="idHistorico">ID da conta</label>
+
+                  <input
+                      id="idHistorico"
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={idHistorico}
+                      onChange={(e) => setIdHistorico(e.target.value)}
+                      placeholder="Digite o ID da conta"
+                      disabled={consultandoHistorico}
+                      required
+                  />
+
+                  <button
+                      key={consultandoHistorico ? 'consultando' : 'pronto'}
+                      type="submit"
+                      disabled={consultandoHistorico}
+                  >
+                    {consultandoHistorico ? 'Consultando...' : 'Consultar histórico'}
+                  </button>
+                </form>
+
+                {erroHistorico && (
+                    <p className="mensagem-erro">{erroHistorico}</p>
+                )}
+
+                {historicoCarregado && historico.length === 0 && (
+                    <p className="mensagem-vazia">
+                      Nenhuma transferência encontrada para esta conta.
+                    </p>
+                )}
+
+                {historico.length > 0 && (
+                    <div className="resultado-historico">
+                      <h3>
+                        Histórico da conta {contaHistorico}:
+                      </h3>
+
+                      <div className="tabela-container">
+                      <table className="tabela-historico">
+                        <thead>
+                        <tr>
+                          <th>ID Transferência</th>
+                          <th>Tipo</th>
+                          <th>ID Origem</th>
+                          <th>ID Destino</th>
+                          <th>Valor</th>
+                          <th>Data</th>
+                          <th>Status</th>
+                          <th>Risco</th>
+                        </tr>
+                        </thead>
+
+                        <tbody>
+                        {historico.map((transferencia) => (
+                            <tr key={transferencia.id}>
+                              <td>{transferencia.id}</td>
+
+                              <td>
+                                {transferencia.origemId === contaHistorico
+                                    ? 'Enviada'
+                                    : 'Recebida'}
+                              </td>
+
+
+                              <td>
+                                {transferencia.origemId === contaHistorico ? (
+                                    <strong>{transferencia.origemId}</strong>
+                                ) : (
+                                    transferencia.origemId
+                                )}
+                              </td>
+
+                              <td>
+                                {transferencia.destinoId === contaHistorico ? (
+                                    <strong>{transferencia.destinoId}</strong>
+                                ) : (
+                                    transferencia.destinoId
+                                )}
+                              </td>
+
+
+                              <td>
+                                {transferencia.valor.toLocaleString('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                })}
+                              </td>
+
+                              <td>
+                                {new Date(transferencia.criadaEm).toLocaleString('pt-BR')}
+                              </td>
+
+                              <td>
+                  <span
+                      className={
+                        transferencia.status === 'CONCLUIDA'
+                            ? 'status-concluida'
+                            : 'status-recusada'
+                      }
+                  >
+                    {transferencia.status}
+                  </span>
+                              </td>
+
+                              <td>{transferencia.nivelRisco ?? 'Não avaliado'}</td>
+                            </tr>
+                        ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    </div>
+                )}
               </section>
           )}
 
-          {pagina === 'antifraude' && (
-              <section>
-                <h2>Antifraude</h2>
-                <p>Acompanhe os alertas e níveis de risco.</p>
-              </section>
-          )}
         </main>
       </div>
   )
