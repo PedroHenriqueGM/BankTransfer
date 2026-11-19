@@ -1,4 +1,3 @@
-
 export type Transferencia = {
     id: number
     origemId: number
@@ -49,3 +48,37 @@ export async function buscarHistorico(
 
     return resposta.json()
 }
+
+export async function buscarSinalizadas(): Promise<Transferencia[]> {
+    const resposta = await fetch('/api/transferencias/sinalizadas')
+
+    if (!resposta.ok) {
+        throw new Error('Não foi possível carregar as transferências sinalizadas.')
+    }
+
+    return resposta.json()
+}
+
+export type AlertaFraude = {
+    id: number
+    transferenciaId: number
+    tipo: 'VALOR_ELEVADO' | 'FREQUENCIA_ELEVADA'
+    descricao: string
+    criadoEm: string
+}
+
+export async function buscarAlertas(
+    transferenciaId: number
+): Promise<AlertaFraude[]> {
+    const resposta = await fetch(
+        `/api/transferencias/${transferenciaId}/alertas`
+    )
+
+    if (!resposta.ok) {
+        throw new Error('Não foi possível consultar os alertas.')
+    }
+
+    return resposta.json()
+}
+
+

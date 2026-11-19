@@ -8,11 +8,13 @@ import com.pedro.banktransfer.enums.TipoAlertaFraude;
 import com.pedro.banktransfer.repository.AlertaFraudeRepository;
 import com.pedro.banktransfer.repository.TransferenciaRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -137,6 +139,13 @@ public class AntifraudeService {
                 nivel,
                 Set.copyOf(regras)
         );
+    }
+
+    @Transactional(readOnly = true)
+    public List<AlertaFraudeEntity> buscarAlertasPorTransferencia(
+            Long transferenciaId) {
+
+        return alertaFraudeRepository.findByTransferenciaId(transferenciaId);
     }
 
 }

@@ -1,3 +1,4 @@
+import PainelAntifraude from './components/PainelAntifraude'
 import { useRef, useState } from 'react'
 import { buscarConta, criarConta, type Conta } from './services/contaService'
 import './App.css'
@@ -531,6 +532,8 @@ function App() {
                 )}
               </section>
           )}
+
+          {pagina === 'antifraude' && <PainelAntifraude />}
 
         </main>
       </div>

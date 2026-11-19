@@ -7,10 +7,9 @@ import com.pedro.banktransfer.enums.NivelRisco;
 import com.pedro.banktransfer.exception.ChaveIdempotenciaConflitanteException;
 import com.pedro.banktransfer.exception.ContaNaoEncontradaException;
 import com.pedro.banktransfer.exception.TransferenciaNaoEncontradaException;
-import com.pedro.banktransfer.repository.AlertaFraudeRepository;
 import com.pedro.banktransfer.repository.ContaRepository;
 import com.pedro.banktransfer.repository.TransferenciaRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -150,6 +149,15 @@ public class TransferenciaService {
                         t.getNivelRisco()
                 ))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<TransferenciaEntity> listarTransferenciasSinalizadas() {
+
+        return transferenciaRepository
+                .findByNivelRiscoInOrderByCriadaEmDesc(
+                        List.of(NivelRisco.MODERADO, NivelRisco.ALTO)
+                );
     }
 
 
