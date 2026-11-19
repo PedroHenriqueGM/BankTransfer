@@ -5,13 +5,17 @@ export type Conta = {
     saldo: number
 }
 
-export async function criarConta(titular: string): Promise<Conta> {
+
+export async function criarConta(
+    titular: string,
+    saldoInicial: number
+): Promise<Conta> {
     const resposta = await fetch('/api/contas', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ titular }),
+        body: JSON.stringify({ titular, saldoInicial }),
     })
 
     if (!resposta.ok) {

@@ -13,6 +13,7 @@ type Pagina = 'contas' | 'transferencias' | 'historico' | 'antifraude'
 function App() {
   const [pagina, setPagina] = useState<Pagina>('contas')
   const [titular, setTitular] = useState('')
+  const [saldoInicial, setSaldoInicial] = useState('')
   const [contaCriada, setContaCriada] = useState<Conta | null>(null)
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(false)
@@ -40,6 +41,7 @@ function App() {
   const [historicoCarregado, setHistoricoCarregado] = useState(false)
   const [contaHistorico, setContaHistorico] = useState<number | null>(null)
 
+
   async function cadastrarConta(evento: React.SubmitEvent<HTMLFormElement>) {
     evento.preventDefault()
 
@@ -48,21 +50,45 @@ function App() {
       return
     }
 
+    const saldoInformado = saldoInicial.trim()
+
+    if (
+        saldoInformado !== '' &&
+        (
+            !/^\d+(\.\d{1,2})?$/.test(saldoInformado) ||
+            saldoInformado.split('.')[0].length > 17
+        )
+    ) {
+      setErro('Informe um saldo inicial válido, com no máximo duas casas decimais.')
+      return
+    }
+
+    const saldoNumerico = saldoInformado === ''
+        ? 0
+        : Number(saldoInformado)
+
+    if (!Number.isFinite(saldoNumerico)) {
+      setErro('Informe um saldo inicial válido.')
+      return
+    }
+
     setCarregando(true)
     setErro('')
     setContaCriada(null)
 
     try {
-      const conta = await criarConta(titular.trim())
+      const conta = await criarConta(titular.trim(), saldoNumerico)
 
       setContaCriada(conta)
       setTitular('')
+      setSaldoInicial('')
     } catch {
       setErro('Não foi possível cadastrar a conta.')
     } finally {
       setCarregando(false)
     }
   }
+
 
 
   async function consultarConta(evento: React.SubmitEvent<HTMLFormElement>) {
@@ -92,6 +118,7 @@ function App() {
     }
   }
 
+
   async function realizarTransferencia(
       evento: React.SubmitEvent<HTMLFormElement>
   ) {
@@ -99,7 +126,8 @@ function App() {
 
     const origem = Number(origemId)
     const destino = Number(destinoId)
-    const valorNumerico = Number(valor)
+    const valorInformado = valor.trim()
+    const valorNumerico = Number(valorInformado)
 
     if (
         !Number.isSafeInteger(origem) ||
@@ -112,15 +140,21 @@ function App() {
       return
     }
 
-    if (!Number.isFinite(valorNumerico) || valorNumerico <= 0) {
-      setErroTransferencia('Informe um valor maior que zero.')
+    if (
+        !/^\d+(\.\d{1,2})?$/.test(valorInformado) ||
+        !Number.isFinite(valorNumerico) ||
+        valorNumerico <= 0 ||
+        valorInformado.split('.')[0].length > 17
+    ) {
+      setErroTransferencia(
+          'Informe um valor positivo com até 17 dígitos inteiros e 2 casas decimais.'
+      )
       return
     }
 
     setTransferindo(true)
     setErroTransferencia('')
     setResultadoTransferencia(null)
-
 
     try {
       const tentativa = tentativaPendente.current
@@ -262,6 +296,21 @@ function App() {
                       disabled={carregando}
                   />
 
+                  <label htmlFor="saldoInicial">
+                    Saldo inicial de demonstração (R$)
+                  </label>
+
+                  <input
+                      id="saldoInicial"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={saldoInicial}
+                      onChange={(evento) => setSaldoInicial(evento.target.value)}
+                      placeholder="0.00"
+                      disabled={carregando}
+                  />
+
                   <button type="submit" disabled={carregando}>
                     {carregando ? 'Cadastrando...' : 'Criar conta'}
                   </button>
@@ -389,15 +438,6 @@ function App() {
                           currency: 'BRL',
                         })}
                       </p>
-                      <p>
-                        <strong>Pontuação de risco:</strong>{' '}
-                        {resultadoTransferencia.pontuacaoRisco ?? 'Não avaliado'}
-                      </p>
-                      <p>
-                        <strong>Nível de risco:</strong>{' '}
-                        {resultadoTransferencia.nivelRisco ?? 'Não avaliado'}
-                      </p>
-
                       {resultadoTransferencia.status === 'RECUSADA' && (
                           <p className="mensagem-erro">
                             Transferência bloqueada preventivamente por risco elevado.

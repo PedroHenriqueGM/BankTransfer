@@ -40,6 +40,20 @@ public class TransferenciaService {
 
     @Transactional
     public ResultadoTransferencia transferir(Long origemId, Long destinoId, BigDecimal valor, String idempotencyKey) {
+        if (origemId == null || destinoId == null) {
+            throw new IllegalArgumentException("As contas devem ser informadas");
+        }
+        if (Objects.equals(origemId, destinoId)){
+            throw new IllegalArgumentException("Não é possível transferir para a mesma conta");
+        }
+        if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Valor deve ser positivo");
+        }
+        if (valor.scale() > 2 || valor.precision() - valor.scale() > 17) {
+            throw new IllegalArgumentException(
+                    "Valor deve ter no máximo 17 dígitos inteiros e 2 casas decimais"
+            );
+        }
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new IllegalArgumentException(
                     "Chave de idempotência obrigatória"
@@ -71,15 +85,6 @@ public class TransferenciaService {
             }
 
             return new ResultadoTransferencia(transferencia, false);
-        }
-        if (origemId == null || destinoId == null) {
-            throw new IllegalArgumentException("As contas devem ser informadas");
-        }
-        if (Objects.equals(origemId, destinoId)){
-            throw new IllegalArgumentException("Não é possível transferir para a mesma conta");
-        }
-        if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Valor deve ser positivo");
         }
         Long primeiroId = Math.min(origemId, destinoId);
         Long segundoId = Math.max(origemId, destinoId);

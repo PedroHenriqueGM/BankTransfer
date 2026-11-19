@@ -25,7 +25,10 @@ public class ContaController {
 
     @PostMapping
     public ResponseEntity<ContaEntity> criarConta(@Valid @RequestBody CriarContaDTO dto) {
-        ContaEntity salva = contaService.criarConta(dto.titular());
+        ContaEntity salva = contaService.criarConta(
+                dto.titular(),
+                dto.saldoInicial()
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(salva);
     }
 

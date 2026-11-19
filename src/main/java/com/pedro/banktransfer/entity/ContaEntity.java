@@ -20,8 +20,11 @@ public class ContaEntity {
     public ContaEntity() {
     }
 
-    public ContaEntity(String titular) {
+    public ContaEntity(String titular, BigDecimal saldoInicial) {
         this.titular = titular;
+        this.saldo = saldoInicial == null
+                ? BigDecimal.ZERO
+                : saldoInicial;
     }
 
     // Getters

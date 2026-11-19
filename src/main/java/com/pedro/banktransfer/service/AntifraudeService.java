@@ -47,54 +47,6 @@ public class AntifraudeService {
 
 
     public ResultadoAnaliseRisco avaliarRisco(
-            TransferenciaEntity transferencia) {
-
-        int pontuacao = 0;
-        Set<TipoAlertaFraude> regras = new HashSet<>();
-
-        // Regra 1: Valor elevado
-        if (transferencia.getValor()
-                .compareTo(new BigDecimal("5000.00")) > 0) {
-
-            pontuacao += 35;
-            regras.add(TipoAlertaFraude.VALOR_ELEVADO);
-        }
-
-        // Regra 2: Frequência elevada
-        Instant cincoMinutosAtras = transferencia.getCriadaEm()
-                .minus(5, ChronoUnit.MINUTES);
-
-        long quantidade = transferenciaRepository
-                .countByContaOrigemIdAndCriadaEmAfter(
-                        transferencia.getContaOrigem().getId(),
-                        cincoMinutosAtras
-                );
-
-        if (quantidade >= 3) {
-            pontuacao += 45;
-            regras.add(TipoAlertaFraude.FREQUENCIA_ELEVADA);
-        }
-
-        // Classificação
-        NivelRisco nivel;
-
-        if (pontuacao >= 70) {
-            nivel = NivelRisco.ALTO;
-        } else if (pontuacao >= 35) {
-            nivel = NivelRisco.MODERADO;
-        } else {
-            nivel = NivelRisco.BAIXO;
-        }
-
-        return new ResultadoAnaliseRisco(
-                pontuacao,
-                nivel,
-                Set.copyOf(regras)
-        );
-    }
-
-
-    public ResultadoAnaliseRisco avaliarRisco(
             Long origemId,
             BigDecimal valor) {
 
